@@ -1,0 +1,18 @@
+The system is designed using a Retrieval-Augmented Generation architecture.
+
+Documents are stored in a knowledge base and processed through a
+document ingestion pipeline that performs text extraction, cleaning,
+and chunking.
+
+Each chunk is converted into a vector embedding and stored in a
+vector database for similarity search.
+
+When a user query is received, an intent detection module determines
+whether the request requires information retrieval or task execution.
+
+For information queries, relevant chunks are retrieved from the vector
+database and passed to the language model to generate a context-aware
+response.
+
+The system separates retrieval, generation, and task logic to ensure
+modularity and maintainability.

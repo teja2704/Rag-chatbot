@@ -25,7 +25,7 @@ body {
     font-family: 'Segoe UI', sans-serif;
 }
 
-/* Bubble base */
+/* Chat bubble base */
 .bubble {
     padding: 14px 20px;
     border-radius: 22px;
@@ -81,7 +81,6 @@ st.markdown(
     "<h1 style='text-align:center;color:#e5e7eb;'>🤖 RAG Chatbot</h1>",
     unsafe_allow_html=True
 )
-
 st.markdown(
     "<p style='text-align:center;color:#cbd5f5;'>Ask questions grounded in your knowledge base</p>",
     unsafe_allow_html=True
@@ -100,60 +99,55 @@ with st.sidebar:
     - Local FLAN-T5 generation  
     - Hybrid-ready for online LLMs  
     """)
-
     st.markdown("---")
-
     st.markdown("""
     **How to use**
     - Type a question  
     - Press Enter  
-    - Answers are grounded in documents  
+    - Backend must be running on port 5000  
     """)
 
 # -------------------------------------------------
 # Session State
 # -------------------------------------------------
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 # -------------------------------------------------
-# Render Chat
+# Render Chat (ONLY ONCE PER RUN)
 # -------------------------------------------------
-def render_chat():
-    for role, message in st.session_state.chat_history:
-        if role == "user":
-            st.markdown(
-                f"""
-                <div class="bubble user">
-                    <img class="avatar" src="https://cdn-icons-png.flaticon.com/512/147/147144.png">
-                    <span>{message}</span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                f"""
-                <div class="bubble assistant">
-                    <img class="avatar" src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png">
-                    <span>{message}</span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-render_chat()
+for role, message in st.session_state.messages:
+    if role == "user":
+        st.markdown(
+            f"""
+            <div class="bubble user">
+                <img class="avatar" src="https://cdn-icons-png.flaticon.com/512/147/147144.png">
+                <span>{message}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f"""
+            <div class="bubble assistant">
+                <img class="avatar" src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png">
+                <span>{message}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 # -------------------------------------------------
-# Chat Input
+# Chat Input (ONLY ONE INPUT)
 # -------------------------------------------------
 user_query = st.chat_input("Type your question and press Enter...")
 
 if user_query:
-    # Add user message
-    st.session_state.chat_history.append(("user", user_query))
-    render_chat()
+    # Store user message
+    st.session_state.messages.append(("user", user_query))
 
+    # Call backend
     try:
         response = requests.post(
             API_URL,
@@ -163,7 +157,12 @@ if user_query:
 
         if response.status_code == 200:
             data = response.json()
-            answer = data.get("answer", "No answer returned.")
+            answer = (
+                data.get("answer")
+                or data.get("response")
+                or data.get("result")
+                or "No answer returned."
+            )
 
             if data.get("sources"):
                 answer += "\n\n📌 Answer generated from retrieved documents."
@@ -173,6 +172,8 @@ if user_query:
     except Exception as e:
         answer = f"⚠️ Backend not reachable.\n\n{e}"
 
-    # Add assistant message
-    st.session_state.chat_history.append(("assistant", answer))
-    render_chat()
+    # Store assistant message
+    st.session_state.messages.append(("assistant", answer))
+
+    # Rerun once to render cleanly
+    st.rerun()

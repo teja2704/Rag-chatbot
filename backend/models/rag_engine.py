@@ -103,6 +103,10 @@ class RAGEngine:
         self._index_documents()
 
     def _index_documents(self):
+        # 🔒 Prevent duplicate indexing
+        if self.collection.count() > 0:
+            return
+
         docs = load_documents()
         if not docs:
             return
@@ -155,7 +159,7 @@ Question:
                 response = gemini_model.generate_content(prompt)
                 return response.text
             except Exception:
-                pass  # fall back silently
+                pass  # fallback silently
 
         # 🟢 OFFLINE MODE (FLAN-T5)
         result = local_llm(prompt)
