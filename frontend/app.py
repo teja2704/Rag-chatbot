@@ -88,25 +88,44 @@ st.markdown(
 )
 
 # -------------------------------------------------
-# Sidebar
+# Sidebar (UPDATED ABOUT SECTION)
 # -------------------------------------------------
 with st.sidebar:
-    st.header("ℹ️ About")
-    st.markdown("""
-    **RAG Chatbot**
-    
-    - Offline-first architecture  
-    - Vector search with ChromaDB  
-    - Local FLAN-T5 generation  
-    - Hybrid-ready for online LLMs  
-    """)
+    st.markdown("## 🤖 RAG Chatbot")
+
+    st.markdown(
+        """
+        **An offline-first, explainable AI assistant**  
+        that answers questions using your own documents.
+        """
+    )
+
     st.markdown("---")
-    st.markdown("""
-    **How to use**
-    - Type a question  
-    - Press Enter  
-    - Backend must be running on port 5000  
-    """)
+
+    st.markdown("### 🚀 Key Capabilities")
+    st.markdown(
+        """
+        - 🔍 Semantic document retrieval  
+        - 🧠 Context-aware answer generation  
+        - 📚 Transparent source attribution  
+        - ⚡ Runs fully offline  
+        """
+    )
+
+    st.markdown("---")
+
+    st.markdown("### 🛠 Tech Stack")
+    st.markdown(
+        """
+        - **Embeddings:** SentenceTransformers  
+        - **Vector DB:** ChromaDB  
+        - **LLM:** FLAN-T5  
+        - **UI:** Streamlit  
+        """
+    )
+
+    st.markdown("---")
+    st.caption("💡 Tip: Ask factual questions related to the uploaded knowledge base.")
 
 # -------------------------------------------------
 # Session State
@@ -114,19 +133,33 @@ with st.sidebar:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "last_query" not in st.session_state:
+    st.session_state.last_query = None
+
 # -------------------------------------------------
 # Helper: Format Answer + Sources
 # -------------------------------------------------
 def format_answer(answer, sources):
     formatted = answer.strip()
 
+    formatted += (
+        "\n\nℹ️ *This answer was generated using retrieved documents "
+        "from the knowledge base (RAG).*"
+    )
+
     if sources:
-        formatted += "\n\n---\n📚 **Sources (Retrieved Context):**\n"
-        for i, src in enumerate(sources, 1):
-            snippet = src.replace("\n", " ")[:200]
-            formatted += f"- Source {i}: {snippet}...\n"
+        with st.expander("📚 Show sources used"):
+            for i, src in enumerate(sources, 1):
+                snippet = src.replace("\n", " ")[:300]
+                st.markdown(f"**Source {i}:** {snippet}...")
 
     return formatted
+
+# -------------------------------------------------
+# Empty State
+# -------------------------------------------------
+if not st.session_state.messages:
+    st.info("👋 Ask your first question to get started.")
 
 # -------------------------------------------------
 # Render Chat History
@@ -158,11 +191,12 @@ for role, message in st.session_state.messages:
 # -------------------------------------------------
 user_query = st.chat_input("Type your question and press Enter...")
 
-if user_query:
+if user_query and user_query != st.session_state.last_query:
+    st.session_state.last_query = user_query
+
     # Store user message
     st.session_state.messages.append(("user", user_query))
 
-    # Loading indicator
     with st.spinner("🤖 Thinking..."):
         try:
             response = requests.post(
@@ -185,5 +219,4 @@ if user_query:
     # Store assistant message
     st.session_state.messages.append(("assistant", formatted_answer))
 
-    # Rerun once for clean render
     st.rerun()
