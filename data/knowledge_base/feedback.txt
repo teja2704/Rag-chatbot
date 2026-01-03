@@ -1,0 +1,10 @@
+The chatbot improves efficiency over time by learning from user
+interactions and feedback.
+
+Interaction data can be analyzed to refine intent detection,
+improve retrieval accuracy, and optimize response generation.
+
+By continuously updating the knowledge base and retrieval strategies,
+the system adapts to changing user needs.
+
+This learning process helps maintain system relevance and performance.
