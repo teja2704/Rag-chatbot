@@ -1,16 +1,27 @@
-from flask import Flask, request, jsonify
+from flask import Flask
 from flask_cors import CORS
 
-from routes.chat import handle_chat
+from routes.chat import chat_bp
+from routes.tasks import tasks_bp
+from db.database import init_db
 
-app = Flask(__name__)
-CORS(app)
+def create_app():
+    app = Flask(__name__)
+    CORS(app)
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.json
-    query = data.get("query", "")
-    return jsonify(handle_chat(query))
+    # Initialize database
+    init_db()
+
+    # Register routes
+    app.register_blueprint(chat_bp)
+    app.register_blueprint(tasks_bp)
+
+    @app.route("/ping", methods=["GET"])
+    def ping():
+        return {"status": "Backend running"}
+
+    return app
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app = create_app()
+    app.run(debug=True, port=5000)

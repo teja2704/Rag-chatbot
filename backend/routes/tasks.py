@@ -1,8 +1,22 @@
-def execute_task(query: str):
-    if "report" in query.lower():
-        return {"status": "success", "message": "Report generated"}
+from flask import Blueprint, request, jsonify
+from db.database import save_task
 
-    if "schedule" in query.lower():
-        return {"status": "success", "message": "Event scheduled"}
+tasks_bp = Blueprint("tasks", __name__)
 
-    return {"status": "failed", "message": "Task not recognized"}
+@tasks_bp.route("/task", methods=["POST"])
+def create_task():
+    data = request.get_json()
+
+    user_id = data.get("user_id", 1)
+    task_type = data.get("task_type")
+    task_data = data.get("task_data")
+
+    if not task_type:
+        return jsonify({"error": "task_type is required"}), 400
+
+    save_task(user_id, task_type, task_data)
+
+    return jsonify({
+        "message": "Task created successfully",
+        "task_type": task_type
+    })
