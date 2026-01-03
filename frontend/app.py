@@ -31,11 +31,12 @@ body {
     border-radius: 22px;
     max-width: 75%;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
     margin-bottom: 12px;
     animation: fadeIn 0.25s ease-in-out;
     word-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 /* User bubble */
@@ -114,7 +115,21 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # -------------------------------------------------
-# Render Chat (ONLY ONCE PER RUN)
+# Helper: Format Answer + Sources
+# -------------------------------------------------
+def format_answer(answer, sources):
+    formatted = answer.strip()
+
+    if sources:
+        formatted += "\n\n---\n📚 **Sources (Retrieved Context):**\n"
+        for i, src in enumerate(sources, 1):
+            snippet = src.replace("\n", " ")[:200]
+            formatted += f"- Source {i}: {snippet}...\n"
+
+    return formatted
+
+# -------------------------------------------------
+# Render Chat History
 # -------------------------------------------------
 for role, message in st.session_state.messages:
     if role == "user":
@@ -139,7 +154,7 @@ for role, message in st.session_state.messages:
         )
 
 # -------------------------------------------------
-# Chat Input (ONLY ONE INPUT)
+# Chat Input
 # -------------------------------------------------
 user_query = st.chat_input("Type your question and press Enter...")
 
@@ -147,33 +162,28 @@ if user_query:
     # Store user message
     st.session_state.messages.append(("user", user_query))
 
-    # Call backend
-    try:
-        response = requests.post(
-            API_URL,
-            json={"query": user_query},
-            timeout=30
-        )
-
-        if response.status_code == 200:
-            data = response.json()
-            answer = (
-                data.get("answer")
-                or data.get("response")
-                or data.get("result")
-                or "No answer returned."
+    # Loading indicator
+    with st.spinner("🤖 Thinking..."):
+        try:
+            response = requests.post(
+                API_URL,
+                json={"query": user_query},
+                timeout=30
             )
 
-            if data.get("sources"):
-                answer += "\n\n📌 Answer generated from retrieved documents."
-        else:
-            answer = "❌ Backend error. Please try again."
+            if response.status_code == 200:
+                data = response.json()
+                answer = data.get("answer", "No answer returned.")
+                sources = data.get("sources", [])
+                formatted_answer = format_answer(answer, sources)
+            else:
+                formatted_answer = "❌ Backend error. Please try again."
 
-    except Exception as e:
-        answer = f"⚠️ Backend not reachable.\n\n{e}"
+        except Exception as e:
+            formatted_answer = f"⚠️ Backend not reachable.\n\n{e}"
 
     # Store assistant message
-    st.session_state.messages.append(("assistant", answer))
+    st.session_state.messages.append(("assistant", formatted_answer))
 
-    # Rerun once to render cleanly
+    # Rerun once for clean render
     st.rerun()
