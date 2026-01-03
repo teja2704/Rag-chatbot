@@ -1,41 +1,40 @@
 import streamlit as st
 import requests
 
+# -------------------------------------------------
+# Backend API
+# -------------------------------------------------
 API_URL = "http://localhost:5000/chat"
 
-st.set_page_config(page_title="RAG Chatbot", page_icon="🤖", layout="wide")
+# -------------------------------------------------
+# Page Config
+# -------------------------------------------------
+st.set_page_config(
+    page_title="RAG Chatbot",
+    page_icon="🤖",
+    layout="centered"
+)
 
-# --- CSS for bubble-style chat ---
+# -------------------------------------------------
+# Custom CSS
+# -------------------------------------------------
 st.markdown("""
 <style>
 body {
-    background: linear-gradient(135deg, #667eea, #764ba2, #f6d365);
+    background: linear-gradient(135deg, #667eea, #764ba2, #0f172a);
     font-family: 'Segoe UI', sans-serif;
-}
-
-/* Chat window */
-.chat-container {
-    max-width: 700px;
-    margin: auto;
-    margin-top: 40px;
-    padding: 10px;
-    height: 70vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
 }
 
 /* Chat bubble base */
 .bubble {
-    padding: 12px 18px;
-    border-radius: 25px;
-    max-width: 70%;
-    position: relative;
-    display: inline-flex;
+    padding: 14px 20px;
+    border-radius: 22px;
+    max-width: 75%;
+    display: flex;
     align-items: center;
-    gap: 10px;
-    animation: fadeIn 0.3s ease-in-out;
+    gap: 12px;
+    margin-bottom: 12px;
+    animation: fadeIn 0.25s ease-in-out;
     word-wrap: break-word;
 }
 
@@ -43,122 +42,138 @@ body {
 .user {
     background: linear-gradient(135deg, #ff758c, #ff7eb3);
     color: white;
-    align-self: flex-end;
-    border-bottom-right-radius: 0px; /* tail effect */
+    margin-left: auto;
 }
 
 /* Assistant bubble */
 .assistant {
     background: linear-gradient(135deg, #43e97b, #38f9d7);
     color: #1f2937;
-    align-self: flex-start;
-    border-bottom-left-radius: 0px; /* tail effect */
+    margin-right: auto;
 }
 
-/* Tail for user bubble */
-.user::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    right: -8px;
-    width: 0;
-    height: 0;
-    border-top: 12px solid #ff758c;
-    border-left: 12px solid transparent;
-}
-
-/* Tail for assistant bubble */
-.assistant::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: -8px;
-    width: 0;
-    height: 0;
-    border-top: 12px solid #43e97b;
-    border-right: 12px solid transparent;
-}
-
-/* Avatars */
+/* Avatar */
 .avatar {
     width: 32px;
     height: 32px;
     border-radius: 50%;
 }
 
-/* Fade-in animation */
+/* Fade animation */
 @keyframes fadeIn {
-    from {opacity: 0; transform: translateY(10px);}
+    from {opacity: 0; transform: translateY(8px);}
     to {opacity: 1; transform: translateY(0);}
 }
 
-/* Input */
-.stTextInput>div>input {
-    border-radius: 25px;
-    border: none;
-    padding: 14px;
+/* Chat input */
+.stChatInput textarea {
+    border-radius: 25px !important;
+    padding: 12px !important;
     font-size: 16px;
-}
-
-/* Button */
-.stButton>button {
-    background: linear-gradient(135deg, #ff758c, #ff7eb3);
-    color: white;
-    border-radius: 25px;
-    padding: 10px 25px;
-    font-weight: bold;
-    transition: 0.3s;
-}
-.stButton>button:hover {
-    opacity: 0.85;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Title ---
-st.markdown("<h1 style='text-align:center;font-size:50px;color:#4f46e5;'>🤖 RAG Chatbot</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;font-size:18px;color:#374151;'>Ask anything from your knowledge base</p>", unsafe_allow_html=True)
+# -------------------------------------------------
+# Title
+# -------------------------------------------------
+st.markdown(
+    "<h1 style='text-align:center;color:#e5e7eb;'>🤖 RAG Chatbot</h1>",
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<p style='text-align:center;color:#cbd5f5;'>Ask questions grounded in your knowledge base</p>",
+    unsafe_allow_html=True
+)
 
-# --- Sidebar ---
+# -------------------------------------------------
+# Sidebar
+# -------------------------------------------------
 with st.sidebar:
-    st.header("💡 How to Use")
+    st.header("ℹ️ About")
     st.markdown("""
-    - Type your question and press Enter  
-    - Chat history is saved during this session  
-    - Backend must be running at port 5000  
+    **RAG Chatbot**
+    
+    - Offline-first architecture  
+    - Vector search with ChromaDB  
+    - Local FLAN-T5 generation  
+    - Hybrid-ready for online LLMs  
+    """)
+    st.markdown("---")
+    st.markdown("""
+    **How to use**
+    - Type a question  
+    - Press Enter  
+    - Backend must be running on port 5000  
     """)
 
-# --- Chat history ---
-if "chat" not in st.session_state:
-    st.session_state.chat = []
+# -------------------------------------------------
+# Session State
+# -------------------------------------------------
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-def display_chat():
-    html = '<div class="chat-container">'
-    for role, msg in st.session_state.chat:
-        if role == "user":
-            html += f'<div class="bubble user"><img class="avatar" src="https://cdn-icons-png.flaticon.com/512/147/147144.png">{msg}</div>'
-        else:
-            html += f'<div class="bubble assistant"><img class="avatar" src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png">{msg}</div>'
-    html += '</div>'
-    st.markdown(html, unsafe_allow_html=True)
+# -------------------------------------------------
+# Render Chat (ONLY ONCE PER RUN)
+# -------------------------------------------------
+for role, message in st.session_state.messages:
+    if role == "user":
+        st.markdown(
+            f"""
+            <div class="bubble user">
+                <img class="avatar" src="https://cdn-icons-png.flaticon.com/512/147/147144.png">
+                <span>{message}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f"""
+            <div class="bubble assistant">
+                <img class="avatar" src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png">
+                <span>{message}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-display_chat()
+# -------------------------------------------------
+# Chat Input (ONLY ONE INPUT)
+# -------------------------------------------------
+user_query = st.chat_input("Type your question and press Enter...")
 
-# --- Input ---
-question = st.chat_input("Type your question here...")
+if user_query:
+    # Store user message
+    st.session_state.messages.append(("user", user_query))
 
-if question:
-    st.session_state.chat.append(("user", question))
-    display_chat()
-
+    # Call backend
     try:
-        response = requests.post(API_URL, json={"query": question}, timeout=30)
-        if response.status_code == 200:
-            answer = response.json().get("answer", "No answer returned")
-        else:
-            answer = "❌ Backend error"
-    except Exception as e:
-        answer = f"⚠️ Backend not reachable: {e}"
+        response = requests.post(
+            API_URL,
+            json={"query": user_query},
+            timeout=30
+        )
 
-    st.session_state.chat.append(("assistant", answer))
-    display_chat()
+        if response.status_code == 200:
+            data = response.json()
+            answer = (
+                data.get("answer")
+                or data.get("response")
+                or data.get("result")
+                or "No answer returned."
+            )
+
+            if data.get("sources"):
+                answer += "\n\n📌 Answer generated from retrieved documents."
+        else:
+            answer = "❌ Backend error. Please try again."
+
+    except Exception as e:
+        answer = f"⚠️ Backend not reachable.\n\n{e}"
+
+    # Store assistant message
+    st.session_state.messages.append(("assistant", answer))
+
+    # Rerun once to render cleanly
+    st.rerun()
