@@ -1,46 +1,27 @@
 from flask import Blueprint, request, jsonify
-from db.database import save_chat
 
-# Import RAG function (implemented by RAG engineer)
-try:
-    from models.rag_engine import answer_query
-except ImportError:
-    answer_query = None
+from models.rag_engine import answer_query
 
 chat_bp = Blueprint("chat", __name__)
 
+
 @chat_bp.route("/chat", methods=["POST"])
 def chat():
-    data = request.get_json()
-    query = data.get("query")
-    user_id = data.get("user_id", 1)
+    try:
+        data = request.get_json(silent=True)
 
-    if not query:
-        return jsonify({"error": "Query is required"}), 400
+        if not data or "query" not in data:
+            return jsonify({"error": "Query is required"}), 400
 
-    response = f"You asked: {query}"
-    save_chat(user_id, query, response)
+        query = data["query"]
 
-    return jsonify({"answer": response})
+        result = answer_query(query)
 
+        return jsonify(result), 200
 
-@chat_bp.route("/ask", methods=["POST"])
-def ask():
-    data = request.get_json()
-    query = data.get("query")
-    user_id = data.get("user_id", 1)
-
-    if not query:
-        return jsonify({"error": "Query is required"}), 400
-
-    if answer_query is None:
+    except Exception as e:
+        # IMPORTANT: expose error so we stop guessing
         return jsonify({
-            "answer": "RAG engine not integrated yet.",
-            "sources": []
-        })
-
-    result = answer_query(query)
-
-    save_chat(user_id, query, result["answer"])
-
-    return jsonify(result)
+            "error": "Chat endpoint failed",
+            "details": str(e)
+        }), 500
