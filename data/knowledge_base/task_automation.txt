@@ -1,0 +1,11 @@
+The intelligent chatbot supports automation of repetitive and
+decision-based tasks.
+
+Based on user intent, the system can trigger actions such as report
+generation, notifications, scheduling, and data updates.
+
+Task automation is handled separately from information retrieval
+to maintain modular system design.
+
+This integration allows users to interact with automation workflows
+using natural language.

@@ -1,0 +1,10 @@
+flask
+flask-cors
+streamlit
+sentence-transformers
+faiss-cpu
+chromadb
+pypdf
+python-dotenv
+sqlalchemy
+requests
